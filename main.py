@@ -25,10 +25,10 @@ def fillData(curveName, arrX, arrY):
   # fill array
   originOfTime = 1563038100008
   for i in range(0,count):
-    if(curveName == "fake_BTC"):
+    if(curveName[0:4]=="fake"):
       value = cursor[i]["_id"]
     else:
-      value = (cursor[i]["_id"]-originOfTime)/(2*15*60*1000)
+      value = (cursor[i]["_id"]-originOfTime)/(24*60*60*1000)
     arrX.append(value)
     arrY.append(cursor[i]["value"])
 
@@ -47,12 +47,18 @@ def cryptoFFT(arrX, arrY, *args, **kwargs):
   count = len(arrX)
   yf = fft(arrY)
   xf = np.linspace(arrX[0], arrX[-1], count//2)
+  print(xf)
+  fig, [ax1, ax2] = plt.subplots(2, 1, sharex=False)
+
+  maxVal = np.amax(yf)
+  print(maxVal)
 
   cap = kwargs.get('cap', None)
   if(cap is None):
-    plt.plot(xf, np.abs(yf[0:count//2] /count))
+    ax1.plot(xf, np.abs(yf[0:count//2] /maxVal), color="red")
   else:
-    plt.plot(xf, np.clip(np.abs(yf[0:count//2] /count), 0, cap))
+    ax1.plot(xf, np.clip(np.abs(yf[0:count//2] /maxVal), 0, cap))
+  ax2.plot(arrX, arrY)
   #plt.plot(arrX,arrY)
   plt.grid()
   plt.show()
@@ -60,8 +66,15 @@ def cryptoFFT(arrX, arrY, *args, **kwargs):
 ###################################
 # Correlation
 ###################################
-def cryptoCorrelation(curveNameA, curveNameB):
-  print ("correl "+curveNameA + " "+curveNameB)
+def cryptoCorrelation(arrX1, arrY1, arrX2, arrY2):
+  value = np.corrcoef(arrY1, arrY2)
+  print(value[0][1])
+  fig, axs = plt.subplots(3, 1, sharex=False)
+  axs[0].xcorr(arrY1, arrY2)
+  axs[1].plot(arrY1)
+  axs[2].plot(arrY2)
+  #axs[3].cohere(arrY1, arrY2, 256, 0.1)
+  plt.show()
 
 ###################################
 # Help
@@ -69,9 +82,11 @@ def cryptoCorrelation(curveNameA, curveNameB):
 def showHelp():
   print("help")
 
+###################################
+# Main
+###################################
 if len(sys.argv) < 3:
   showHelp()
-  collection = sys.argv[1]
 else:
   # connect to database
   myclient = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -81,14 +96,26 @@ else:
     x=[]
     y=[]
     fillData(sys.argv[2], x, y)
-    cryptoFFT(x, y)
-  if( sys.argv[1] == "correl"):
+    if(sys.argv[2][0:4]=="fake"):
+      cryptoFFT(x, y)
+    else:
+      cryptoFFT(x, y)
+  elif( sys.argv[1] == "plot"):
+    x=[]
+    y=[]
+    fillData(sys.argv[2], x, y)
+    cryptoPlot(x, y)  
+  elif( sys.argv[1] == "correl"):
     if len(sys.argv) < 4:
       showHelp()
       exit()
-    cryptoCorrelation(sys.argv[2], sys.argv[3])  
-
-exit()
+    x1=[]
+    y1=[]
+    x2=[]
+    y2=[]
+    fillData(sys.argv[2], x1, y1)
+    fillData(sys.argv[3], x2, y2)
+    cryptoCorrelation(x1, y1, x2, y2)  
 
 
 
